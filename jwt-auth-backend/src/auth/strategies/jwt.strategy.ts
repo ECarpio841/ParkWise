@@ -1,19 +1,27 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, ExtractJwt } from 'passport-jwt';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor() {
+  constructor(private prisma: PrismaService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ignoreExpiration: false, // Asegura que el token no esté expirado
-      secretOrKey: process.env.JWT_SECRET || 'secretKey', // La clave secreta del JWT
+      ignoreExpiration: false,
+      secretOrKey: process.env.JWT_SECRET || 'secretKey',
     });
   }
 
   async validate(payload: any) {
-    // Aquí puedes realizar validaciones adicionales si es necesario
-    return { id: payload.sub, email: payload.email, role: payload.role };
+    const user = await this.prisma.user.findUnique({
+      where: { email: payload.email }
+    });
+  
+    if (!user || user.role !== 'ADMIN') {
+      throw new UnauthorizedException();
+    }
+  
+    return user;
   }
 }

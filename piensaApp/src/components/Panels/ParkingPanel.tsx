@@ -1,65 +1,121 @@
-import  { useEffect, useState } from 'react';
-import { Card, Row, Col, Tag } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Layout, Row, Col, Card, Button, Checkbox } from 'antd';
 import { CarOutlined, CheckCircleOutlined } from '@ant-design/icons';
-import { Space } from '../Types/types'; // Importa la interfaz
+import axios from 'axios';
+import { Space } from '../Types/types';
+import { useNavigate } from 'react-router-dom';
 
+const { Header, Content } = Layout;
 
 const ParkingPanel = () => {
-  // Especificar el tipo del estado spaces
-  const [spaces, setSpaces] = useState<Space[]>([]); // Especifica el tipo
+  const [spaces, setSpaces] = useState<Space[]>([]);
+  const [showAvailable, setShowAvailable] = useState(false);
+  const [isAdminPanel, setIsAdminPanel] = useState(false);
+  const navigate = useNavigate();
+  const isAuthenticated = !!localStorage.getItem('token');
 
-  // Función para obtener los datos de los espacios desde el backend
   const fetchSpaces = async () => {
     try {
-      const response = await fetch('http://localhost:3000/stats/spacesall');
-      if (!response.ok) {
-        throw new Error('Error al obtener los datos');
-      }
-      const data: Space[] = await response.json(); // Especificar el tipo de data
-      setSpaces(data); // Actualiza el estado con los datos del backend
+      const response = await axios.get<Space[]>('http://localhost:3000/stats/spacesall');
+      setSpaces(response.data);
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching spaces:', error);
     }
   };
 
-  // Llamar a la función fetchSpaces al cargar el componente y cada 5 segundos
+  const updateSpaceStatus = async (spaceId: string, occupied: boolean) => {
+    try {
+      await axios.patch(`http://localhost:3000/stats/spaces/${spaceId}`, { occupied });
+      fetchSpaces();
+    } catch (error) {
+      console.error('Error updating space:', error);
+    }
+  };
+
+  const handleAdminPanel = () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      setIsAdminPanel(true);
+    } else {
+      navigate('/admin/statistics');
+    }
+  };
+
   useEffect(() => {
     fetchSpaces();
-    const interval = setInterval(fetchSpaces, 5000); // Actualizar cada 5 segundos
+    const interval = setInterval(fetchSpaces, 5000);
     return () => clearInterval(interval);
   }, []);
 
+  const filteredSpaces = showAvailable ? spaces.filter(space => !space.occupied) : spaces;
+
   return (
-    
-    <div style={{ padding: '24px' }}>
-      <h1>ParkWise Panel de disponibilidad</h1>
-      <Row gutter={[16, 16]}>
-        {spaces.map((space) => (
-          <Col key={space.id} span={8}>
-            <Card
-              title={`Espacio ${space.spaceId}`} // Usar spaceId en lugar de id
-              style={{ textAlign: 'center' }}
-            >
-              {space.occupied ? (
-                <>
-                  <CarOutlined style={{ fontSize: '48px', color: '#8B0000' }} />
-                  <Tag color="red" style={{ marginTop: '8px' }}>
-                    Ocupado
-                  </Tag>
-                </>
-              ) : (
-                <>
-                  <CheckCircleOutlined style={{ fontSize: '48px', color: '#52c41a' }} />
-                  <Tag color="green" style={{ marginTop: '8px' }}>
-                    Disponible
-                  </Tag>
-                </>
-              )}
-            </Card>
-          </Col>
-        ))}
-      </Row>
-    </div>
+    <Layout>
+      <Header style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        padding: '0 20px', 
+        background: '#f0f2f5'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <h1 style={{ margin: 0, fontWeight: 'bold', color: '#8B0000' }}>ParkWise</h1>
+          <span style={{ marginLeft: 10, fontSize: '16px', color: '#555' }}>Panel de disponibilidad</span>
+        </div>
+        
+        <div>
+          <Button 
+            type="primary" 
+            style={{ marginRight: 10 }}
+            onClick={() => setShowAvailable(!showAvailable)}
+          >
+            {showAvailable ? 'Mostrar todos' : 'Espacios disponibles'}
+          </Button>
+          
+          <Button 
+            type={isAdminPanel ? 'primary' : 'default'}
+            onClick={handleAdminPanel}
+          >
+            {isAdminPanel || isAuthenticated ? 'Panel del Administrador' : 'Panel Admnistrador'}
+          </Button>
+        </div>
+      </Header>
+
+      <Content style={{ padding: '20px', background: '#fff' }}>
+        <div style={{ 
+          border: '2px dashed #d9d9d9', 
+          padding: '20px', 
+          borderRadius: '8px'
+        }}>
+          <Row gutter={[16, 16]} justify="center">
+            {filteredSpaces.map((space) => (
+              <Col xs={12} sm={8} md={6} lg={4} key={space.id}>
+                <Card
+                  style={{
+                    textAlign: 'center',
+                    background: space.occupied ? '#fff1f0' : '#f6ffed',
+                    borderColor: space.occupied ? '#ff4d4f' : '#52c41a',
+                  }}
+                >
+                  {space.occupied ? (
+                    <CarOutlined style={{ fontSize: '48px', color: '#8B0000', marginBottom: '10px' }} />
+                  ) : (
+                    <CheckCircleOutlined style={{ fontSize: '48px', color: '#52c41a', marginBottom: '10px' }} />
+                  )}
+                  
+                  <Checkbox
+                    checked={!space.occupied}
+                    onChange={(e) => updateSpaceStatus(space.spaceId, !e.target.checked)}
+                  >
+                    Espacio {space.spaceId}
+                  </Checkbox>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </div>
+      </Content>
+    </Layout>
   );
 };
 

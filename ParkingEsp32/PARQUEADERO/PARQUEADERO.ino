@@ -27,7 +27,7 @@
 #define LED_RED3 19
 
 // Umbral de distancia para considerar espacio ocupado
-#define THRESHOLD_DISTANCE 5 // Ajusta este valor según sea necesario
+#define THRESHOLD_DISTANCE 10 // Ajusta este valor según sea necesario
 
 // Variables para medir ocupación
 bool space1Occupied = false;

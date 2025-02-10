@@ -90,9 +90,16 @@ const Login = () => {
               </Form.Item>
             </Form>
           </TabPane>
-          <TabPane tab="Sign Up" key="2">
-            <p>Sign up form goes here...</p>
-          </TabPane>
+          // En el TabPane de Sign Up:
+<TabPane tab="Sign Up" key="2">
+  <Button 
+    type="link" 
+    onClick={() => navigate('/register')}
+    style={{ color: '#8358E8' }}
+  >
+    Go to Registration Page
+  </Button>
+</TabPane>
         </Tabs>
       </div>
     </div>
